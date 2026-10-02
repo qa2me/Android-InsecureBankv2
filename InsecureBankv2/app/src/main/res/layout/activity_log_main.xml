@@ -65,16 +65,19 @@
     </TableRow>
 
 
-    <TableRow android:paddingTop="10px" android:gravity="center">
+    <TableRow android:paddingTop="10dp" android:gravity="center"
+        android:paddingLeft="20dp" android:paddingRight="20dp">
         <Button
             android:id="@+id/button_CreateUser"
-            android:layout_width="wrap_content"
-            android:layout_gravity="center"
-            android:layout_span="2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Create User"
-            android:textColor="#890000"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textColor="@color/wallet_bright_foreground_holo_dark"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:background="@drawable/roundbutton"
+            android:padding="15dp" />
     </TableRow>
 
     <!--<TableRow  android:layout_width="match_parent"-->

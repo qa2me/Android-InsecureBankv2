@@ -154,7 +154,11 @@ public class ChangePassword extends Activity {
 					public void run() {
 						if (result != null) {
 							if (result.indexOf("Change Password Successful") != -1) {
-								//	Below code handles the Json response parsing 
+								//	IntelliRASP research - the new password is deliberately
+								//	NOT part of the event payload
+								RaspEvent.ok(RaspEvent.PASSWORD_CHANGE, "ChangePassword", uname,
+										RaspEvent.newOpId(), "strength_policy=passed");
+								//	Below code handles the Json response parsing
 								JSONObject jsonObject;
 								try {
 									jsonObject = new JSONObject(result);
@@ -183,10 +187,12 @@ public class ChangePassword extends Activity {
 			}
 			else
 			{
+				RaspEvent.fail(RaspEvent.PASSWORD_CHANGE, "ChangePassword", uname,
+						RaspEvent.newOpId(), "strength_policy=rejected");
 				runOnUiThread(new Runnable() {
 			    @Override
 				public void run() {
-				Toast.makeText(getApplicationContext(), "Entered password is not complex enough.", Toast.LENGTH_LONG).show();
+					Toast.makeText(getApplicationContext(), "Entered password is not complex enough.", Toast.LENGTH_LONG).show();
 				}
 				});
 			}

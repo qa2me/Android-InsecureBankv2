@@ -1,14 +1,19 @@
 package com.android.insecurebankv2;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -18,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.List;
 import com.marcohc.toasteroid.Toasteroid;
 
 
@@ -26,17 +32,20 @@ The page that allows gives the user below functionalities
 Transfer: Module that allows transfer of amount between two accounts
 View Statement: Module that allows the user to view transaction history for the logged in user
 Change Password:  Module that allows the logged in user to change the password
+
+The nine destinations are laid out as a 2 column GridView instead of the original stack of
+full width rows, so the whole hub fits on one screen. The destination list, the order, the
+RaspEvent.NAVIGATE "to=" values and the intents themselves are unchanged, so the recorded
+event traces are identical to the ones the research dataset was built from.
 @author Dinesh Shetty
 */
 public class PostLogin extends Activity {
-	//	The Button that handles the transfer activity
-	Button transfer_button;
+	//	The GridView holding the nine feature tiles
+	GridView dashboard_grid;
     //  The Textview that handles the root status display
-	TextView root_status;
-	//	The Button that handles the view transaction history activity
-	Button statement_button;
-	//	The Button that handles the change password activity
-	Button changepasswd_button;
+    TextView root_status;
+	//	The Button that handles the logout action
+	Button logout_button;
 	String uname;
 
 	@Override
@@ -52,37 +61,135 @@ public class PostLogin extends Activity {
         //	Display emulator status
         checkEmulatorStatus();
 
-		transfer_button = (Button) findViewById(R.id.trf_button);
-		transfer_button.setOnClickListener(new View.OnClickListener() {
+		//	IntelliRASP research - the six added features of this FYP build plus the three
+		//	pre-existing ones, all reached through the same grid.
+		final List<Tile> tiles = buildTiles();
+		dashboard_grid = (GridView) findViewById(R.id.dashboard_grid);
+		dashboard_grid.setAdapter(new DashboardAdapter(this, tiles));
+		dashboard_grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				openTile(tiles.get(position));
+			}
+		});
+
+		logout_button = (Button) findViewById(R.id.button_Logout);
+		logout_button.setOnClickListener(new View.OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				/*
-				The class that allows allows transfer of amount between two accounts
-				*/
-				Intent dT = new Intent(getApplicationContext(), DoTransfer.class);
-				startActivity(dT);
+				logout();
 			}
 		});
-		statement_button = (Button) findViewById(R.id.viewStatement_button);
-		statement_button.setOnClickListener(new View.OnClickListener() {
+	}
 
-			@Override
-			public void onClick(View v) {
-				// TODO Auto-generated method stub
-				viewStatment();
-			}
-		});
-		changepasswd_button = (Button) findViewById(R.id.button_ChangePasswd);
-		changepasswd_button.setOnClickListener(new View.OnClickListener() {
+	/*
+	One destination on the dashboard.
 
-			@Override
-			public void onClick(View v) {
-				// TODO Auto-generated method stub
-				changePasswd();
+	`tag` is what goes into the RaspEvent.NAVIGATE detail as "to=" and must keep matching the
+	value the original listeners emitted, because the ML pipeline keys off it. `passUsername`
+	is false only for DoTransfer, which the original code deliberately started without the
+	"uname" extra; that quirk is preserved here rather than quietly corrected.
+	*/
+	private static final class Tile {
+		final String label;
+		final Class<?> target;
+		final String tag;
+		final boolean passUsername;
+
+		Tile(String label, Class<?> target, String tag, boolean passUsername) {
+			this.label = label;
+			this.target = target;
+			this.tag = tag;
+			this.passUsername = passUsername;
+		}
+	}
+
+	/*
+	The nine entries, in the order the original layout listed them.
+	*/
+	private static List<Tile> buildTiles() {
+		List<Tile> tiles = new ArrayList<Tile>(9);
+		tiles.add(new Tile("Transfer", DoTransfer.class, "DoTransfer", false));
+		tiles.add(new Tile("View Statement", ViewStatement.class, "ViewStatement", true));
+		tiles.add(new Tile("Change Password", ChangePassword.class, "ChangePassword", true));
+		tiles.add(new Tile("Account Details", AccountDetailsActivity.class, "AccountDetails", true));
+		tiles.add(new Tile("Transaction History", TransactionHistoryActivity.class, "TransactionHistory", true));
+		tiles.add(new Tile("Beneficiaries", BeneficiaryActivity.class, "Beneficiary", true));
+		tiles.add(new Tile("Bill Payment", BillPaymentActivity.class, "BillPayment", true));
+		tiles.add(new Tile("Profile", ProfileActivity.class, "Profile", true));
+		tiles.add(new Tile("Deposit Money", DepositActivity.class, "Deposit", true));
+		return tiles;
+	}
+
+	/*
+	Opens one of the dashboard's screens and records the navigation event.
+	*/
+	private void openTile(Tile tile) {
+		RaspEvent.ok(RaspEvent.NAVIGATE, "PostLogin", uname, RaspEvent.newOpId(), "to=" + tile.tag);
+		Intent i = new Intent(getApplicationContext(), tile.target);
+		if (tile.passUsername) {
+			i.putExtra("uname", uname);
+		}
+		startActivity(i);
+	}
+
+	/*
+	Binds the tile labels into the grid. The cells are identical apart from their text, so
+	there is no view recycling state to worry about.
+	*/
+	private static final class DashboardAdapter extends BaseAdapter {
+
+		private final LayoutInflater inflater;
+		private final List<Tile> tiles;
+
+		DashboardAdapter(Context context, List<Tile> tiles) {
+			this.inflater = LayoutInflater.from(context);
+			this.tiles = tiles;
+		}
+
+		@Override
+		public int getCount() {
+			return tiles.size();
+		}
+
+		@Override
+		public Tile getItem(int position) {
+			return tiles.get(position);
+		}
+
+		@Override
+		public long getItemId(int position) {
+			return position;
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			// convertView is the cell root, not the label - the LinearLayout carries the tile
+			// background and padding, so look the TextView up inside it.
+			View cell = convertView;
+			if (cell == null) {
+				cell = inflater.inflate(R.layout.item_dashboard_tile, parent, false);
 			}
-		});
+			TextView label = (TextView) cell.findViewById(R.id.tile_label);
+			label.setText(tiles.get(position).label);
+			return cell;
+		}
+	}
+
+
+	/*
+	Emits LOGOUT, drops the local session and returns to the login screen.
+	*/
+	protected void logout() {
+		RaspEvent.ok(RaspEvent.LOGOUT, "PostLogin", uname, RaspEvent.newOpId(), "button=logout");
+		BankSession.clear(this);
+		Intent i = new Intent(getBaseContext(), LoginActivity.class);
+		i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+		startActivity(i);
+		finish();
 	}
 
 	private void checkEmulatorStatus() {
@@ -155,26 +262,7 @@ public class PostLogin extends Activity {
         }
     }
 
-    /*
-    The page that allows the user to allow password change for the logged in user
-    */
-	protected void changePasswd() {
-		// TODO Auto-generated method stub
-		Intent cP = new Intent(getApplicationContext(), ChangePassword.class);
-		cP.putExtra("uname", uname);
-		startActivity(cP);
-	}
-
-	/*
-	The function that allows the user to view transaction history for the logged in user
-	*/
-	protected void viewStatment() {
-		// TODO Auto-generated method stub
-		Intent vS = new Intent(getApplicationContext(), ViewStatement.class);
-		vS.putExtra("uname", uname);
-		startActivity(vS);
-	}
-	// Added for handling menu operations
+    // Added for handling menu operations
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 
@@ -194,9 +282,7 @@ public class PostLogin extends Activity {
 			callPreferences();
 			return true;
 		} else if (id == R.id.action_exit) {
-			Intent i = new Intent(getBaseContext(), LoginActivity.class);
-			i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-			startActivity(i);
+			logout();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);

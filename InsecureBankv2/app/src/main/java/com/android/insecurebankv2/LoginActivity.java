@@ -44,10 +44,13 @@ public class LoginActivity extends Activity {
 	Button fillData_button;
 	String usernameBase64ByteString;
 	public static final String MYPREFS = "mySharedPreferences";
+	private static final int REQUEST_SIGN_UP = 1;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		//	IntelliRASP research - starts the event stream and emits APP_START
+		RaspEvent.init(this);
 		setContentView(R.layout.activity_log_main);
 		String mess = getResources().getString(R.string.is_admin);
 		if (mess.equals("no")) {
@@ -109,14 +112,38 @@ public class LoginActivity extends Activity {
 
     /*
     The function that allows the user to create new user credentials.
-    This functionality is available only to the admin user.
-    <<WIP Code>>
-    ToDo: Add functionality here.
+    Signup is self-service in this build (see the is_admin string resource), so the button
+    is offered to everyone and registration itself happens on SignUpActivity.
+
+    This used to be the "still Work-In-Progress" stub of the original application.
     */
     protected void createUser() {
-        Toasteroid.show(this, "Create User functionality is still Work-In-Progress!!", Toasteroid.STYLES.WARNING, Toasteroid.LENGTH_LONG);
-
+        RaspEvent.ok(RaspEvent.NAVIGATE, "LoginActivity", "anonymous",
+                RaspEvent.newOpId(), "to=SignUpActivity");
+        Intent i = new Intent(this, SignUpActivity.class);
+        startActivityForResult(i, REQUEST_SIGN_UP);
     }
+
+	/*
+	Comes back from SignUpActivity once an account exists. Only the username is handed back
+	over, never the password, so the user only has to type that one field again.
+	*/
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (requestCode != REQUEST_SIGN_UP || resultCode != RESULT_OK || data == null) {
+			return;
+		}
+		String created = data.getStringExtra("signup_username");
+		if (created == null || created.length() == 0) {
+			return;
+		}
+		Username_Text = (EditText) findViewById(R.id.loginscreen_username);
+		Username_Text.setText(created);
+		Password_Text = (EditText) findViewById(R.id.loginscreen_password);
+		Password_Text.setText("");
+		Password_Text.requestFocus();
+	}
 
     /*
     The function that allows the user to autofill the credentials
@@ -166,6 +193,9 @@ public class LoginActivity extends Activity {
 		// TODO Auto-generated method stub
 		Username_Text = (EditText) findViewById(R.id.loginscreen_username);
 		Password_Text = (EditText) findViewById(R.id.loginscreen_password);
+		//	IntelliRASP research - a login attempt is recorded, the password is NOT
+		RaspEvent.ok(RaspEvent.SERVER_REQUEST, "LoginActivity", "anonymous",
+				RaspEvent.newOpId(), "action=login_attempt user=" + Username_Text.getText());
 		Intent i = new Intent(this, DoLogin.class);
 		i.putExtra("passed_username", Username_Text.getText().toString());
 		i.putExtra("passed_password", Password_Text.getText().toString());

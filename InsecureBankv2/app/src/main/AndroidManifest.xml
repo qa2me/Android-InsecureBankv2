@@ -46,6 +46,25 @@
             android:name=".DoLogin"
             android:label="@string/title_activity_do_login" >
         </activity>
+        <!--
+        =========================================================================================
+         Self-service signup, opened from the "Create User" button on the login screen.
+
+         Declared private (no intent-filter, exported defaults to false): registration is a
+         deliberate in-app action by the person standing in front of the device, not a
+         privileged operation another app should be able to drive. Note the contrast with
+         BeneficiaryActivity below, which is exported on purpose - see RASP-VULN-003.
+
+         This screen is NOT a vulnerability and must not be turned into one; the rules it
+         enforces are documented in AndroLabServer/app.py::validate_signup() and in
+         docs/INTENTIONAL_VULNERABILITIES.md.
+        =========================================================================================
+        -->
+        <activity
+            android:name=".SignUpActivity"
+            android:label="@string/title_activity_signup"
+            android:windowSoftInputMode="stateVisible|adjustResize" >
+        </activity>
         <activity
             android:name=".PostLogin"
             android:exported="true"
@@ -85,6 +104,68 @@
             android:name=".ChangePassword"
             android:exported="true"
             android:label="@string/title_activity_change_password" >
+        </activity>
+
+        <!--
+        =========================================================================================
+         IntelliRASP FYP build - six added features.
+
+         Except for BeneficiaryActivity every one of these screens is private to the
+         application (no intent-filter, exported defaults to false), so the new functionality
+         cannot be reached from outside.
+        =========================================================================================
+        -->
+        <activity
+            android:name=".AccountDetailsActivity"
+            android:label="@string/title_activity_account_details" >
+        </activity>
+
+        <activity
+            android:name=".TransactionHistoryActivity"
+            android:label="@string/title_activity_transaction_history" >
+        </activity>
+
+        <!--
+        =========================================================================================
+         RASP-VULN-003 : INTENTIONAL MISCONFIGURATION, DO NOT "FIX" IN PRODUCTION
+        =========================================================================================
+         BeneficiaryActivity is declared exported and given an intent filter with no
+         permission attribute, so any application on the device can start it and hand it
+         the account to act on plus a pre-filled beneficiary. It is reachable through the
+         normal user interface as well.
+
+         CWE-926 Improper Export of Android Application Components / CWE-862 Missing
+         Authorization.  Full description and reproduction steps:
+             docs/INTENTIONAL_VULNERABILITIES.md  (RASP-VULN-003)
+             BeneficiaryActivity.handleExternalAutofill()
+
+         To harden the build, delete android:exported / the intent-filter and set
+         android:exported="false" - that is the fix, it is only absent here on purpose.
+        =========================================================================================
+        -->
+        <activity
+            android:name=".BeneficiaryActivity"
+            android:exported="true"
+            android:label="@string/title_activity_beneficiary" >
+            <intent-filter>
+                <action android:name="com.android.insecurebankv2.BENEFICIARY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".BillPaymentActivity"
+            android:label="@string/title_activity_bill_payment" >
+        </activity>
+
+        <activity
+            android:name=".ProfileActivity"
+            android:label="@string/title_activity_profile" >
+        </activity>
+
+        <activity
+            android:name=".DepositActivity"
+            android:label="@string/title_activity_deposit" >
         </activity>
 
     </application>
